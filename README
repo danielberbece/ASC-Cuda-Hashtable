@@ -1,0 +1,54 @@
+Tema 3 - ASC - Cuda Parallel Hashtable
+Student: Berbece Daniel
+Grupa: 335CA
+
+	1. Cerinta
+	Tema a constat in implementarea unui hashtable care sa
+stocheze toate datele in VRAM, folosind CUDA.
+
+	2. Structura
+	Pentru a retine datele hashtable-ului in VRAM am creat
+o structura hashtable_t care contine un array alocat dinamic
+cu elemente de tip hashelem_t, o variabila capacity, care
+contine numarul de elemente alocate in vector si o variabila
+items, care contine numarul de elemente stocate propriu-zis
+in hashtable. Folosind ultimele doua calculam load factorul
+hashtable-ului. 
+	hashelem_t este de fapt o variabila long long, adica pe
+64 biti pentru a putea retine in aceasta atat cheia cat si
+valoarea unui element din hashtable, cele doua fiind pe 32
+de biti. Stocarea se face concatenand cele doua variabile.
+
+	3. Implementare
+	Metoda aleasa pentru tratarea cazurilor de coliziune, am folosit
+quadratic probing, obtinand o performanta mult mai buna decat linear
+probing. Deoarece pe moodle s-a anuntat faptul ca nu se ofera bonus
+pentru implementari de mai multe tipuri, am ramas la aceasta varianta,
+fiind una usor de implementat totodata.
+	Functia de hash este de tipul (a * key % b) % capacity, unde a si b
+sunt doua numere prime foarte mari.
+	La fiecare inserare de elemente se verifica load-ul
+hashtable-ului in cazul in care s-ar adauga numarul de elemente
+specificate ca parametru al functiei. Daca load-ul este peste
+MAX_LOAD, definit in gpu_hashtable.hpp, atunci se redimensioneaza
+pentru a obtine un load de valoare MIN_LOAD. Atunci cand se
+redimensioneaza se rehash-uiesc toate elementele, deoarece inserarea
+elementelor in hash depinde de dimensiunea efectiva a tabelei.
+	Inserarea si obtinerea elementelor se face in batch, adica fiecare
+element este inserat/obtinut in mod paralel prin apelul unui kernel.
+Deoarece atunci cand paralelizam apar si probleme de concurenta, am
+folosit operatia atomicCAS() pentru a adauga un element in tabela in
+mod atomic. Update-ul foloseste de asemenea functia atomicExch().
+	Vectorul de elemente al hashtable-ului este mentinut in permanenta
+in VRAM, fiind niciodata copiat de pe device pe host. Doar capacitatea
+si numarul de elemente au fost copiate intre device si host pentru a se
+calcula load-ul.
+	Pe langa structura de hashtable, mai exista 3 vectori folositi pentru
+copierea datelor (chei, valori) intre device si host pentru operatiile de
+insert si get.
+
+	4. Testare si performante
+	Testarea s-a facut pe clusterul hp-sl.q, obtinand, in medie, un
+load factor de 70% si un throughput de aproximativ 100. Toate testele
+trec. Am testat si local, pe un GTX950M, iar load-ul a fost acelasi
+iar throughput-ul in jur de 150-200.
